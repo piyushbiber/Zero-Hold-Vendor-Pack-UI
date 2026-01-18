@@ -1,0 +1,152 @@
+/* Vendor Stock Editor v1.0 Styles */
+
+.zh-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+.zh-modal-box {
+    background: #fff;
+    width: 420px;
+    max-width: 95%;
+    border-radius: 10px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.zh-modal-header {
+    background: #fdfdfd;
+    padding: 15px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.zh-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.zh-close-x {
+    cursor: pointer;
+    font-size: 22px;
+    color: #999;
+}
+
+.zh-close-x:hover {
+    color: #333;
+}
+
+.zh-product-summary {
+    background: #f9fafb;
+    padding: 15px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.zh-summary-item {
+    font-size: 12px;
+    color: #4b5563;
+}
+
+.zh-summary-item span {
+    font-weight: 600;
+    color: #111;
+    width: 70px;
+    display: inline-block;
+}
+
+.zh-stock-table-header {
+    display: flex;
+    gap: 15px;
+    padding: 10px 20px;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.zh-stock-table-header span:first-child {
+    width: 80px;
+}
+
+.zh-vars-list {
+    padding: 10px 20px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.zh-stock-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 12px 0;
+    gap: 15px;
+}
+
+.zh-stock-row label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    white-space: nowrap;
+    width: 80px;
+    /* Fixed width to align all inputs */
+    flex-shrink: 0;
+}
+
+.zh-stock-row input {
+    width: 80px;
+    /* Smaller input as requested */
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.zh-modal-footer {
+    padding: 15px 20px;
+    background: #f9fafb;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.zh-modal-footer button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.zh-cancel-btn {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.zh-save-btn {
+    background: #d63384;
+    border: none;
+    color: #fff;
+}
+
+.zh-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
