@@ -24,6 +24,9 @@ require_once plugin_dir_path(__FILE__) . 'zerohold-ui/modules/vendor-stock-save.
 // ZeroHold lifecycle control
 require_once dirname(__FILE__) . '/includes/lifecycle/zh-product-lifecycle.php';
 
+// Admin Settings
+require_once dirname(__FILE__) . '/includes/admin-settings.php';
+
 // ZeroHold Workflow & AJAX Actions
 require_once plugin_dir_path(__FILE__) . 'zerohold-ui/modules/products/status-workflow.php';
 require_once plugin_dir_path(__FILE__) . 'zerohold-ui/modules/products/ajax.php';

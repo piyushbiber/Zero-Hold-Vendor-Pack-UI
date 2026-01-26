@@ -249,9 +249,13 @@ function zh_vendor_reject_order_ajax() {
             sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id )
         );
 
-        // Calculate and store rejection penalty (25% of order total)
-        $penalty_amount = $amount * 0.25;
-        $total_deduction = $amount + $penalty_amount; // 125%
+        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
+        $amount = (float) $order->get_total();
+        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+        
+        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+        $total_deduction = $amount + $penalty_amount;
         
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
@@ -305,10 +309,13 @@ function zh_vendor_reject_order_ajax() {
             wp_send_json_error( 'Razorpay refund failed: ' . $err_msg );
         }
 
-        // Calculate and store rejection penalty (25% of order total)
+        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
         $amount = (float) $order->get_total();
-        $penalty_amount = $amount * 0.25;
-        $total_deduction = $amount + $penalty_amount; // 125%
+        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+        
+        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+        $total_deduction = $amount + $penalty_amount;
         
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
@@ -387,10 +394,13 @@ function zh_vendor_reject_order_ajax() {
     // CASE 4: GENERIC / FALLBACK (For COD, Bank Transfer, or other gateways)
     // If we reached here, it means no specific handler matched, but we should still enforce penalty and mark refunded.
     
-    // Calculate and store rejection penalty (25% of order total)
+    // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
     $amount = (float) $order->get_total();
-    $penalty_amount = $amount * 0.25;
-    $total_deduction = $amount + $penalty_amount; // 125%
+    $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+    $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+    
+    $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+    $total_deduction = $amount + $penalty_amount;
     
     $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
     $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
