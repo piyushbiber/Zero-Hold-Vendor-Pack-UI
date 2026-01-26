@@ -303,6 +303,37 @@ function zh_vendor_reject_order_ajax() {
         wp_send_json_success( 'Order rejected and refunded' );
     }
 
+    // CASE 3: NEW WALLET SYSTEM (wps_wcb_wallet_payment_gateway)
+    if ( $payment_method === 'wps_wcb_wallet_payment_gateway' ) {
+        // Attempt Native WooCommerce Refund first (Best Practice)
+        // This triggers the gateway's process_refund() method if implemented
+        $refund = wc_create_refund( array(
+            'amount'         => $order->get_total(),
+            'reason'         => 'Order rejected by vendor: ' . $reason,
+            'order_id'       => $order_id,
+            'refund_payment' => true // Trigger gateway API
+        ) );
+
+        if ( is_wp_error( $refund ) ) {
+            $order->add_order_note( 'Vendor reject failed: ' . $refund->get_error_message() );
+            // If native refund fails, it might be that the gateway doesn't support it or there's an error.
+            // We can add a specialized manual fallback here if we knew the class, 
+            // but for now we report the error to avoid data loss.
+            wp_send_json_error( 'Refund failed: ' . $refund->get_error_message() );
+        }
+
+        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        
+        // Ensure status update if not handled by refund
+        if ( $order->get_status() !== 'refunded' ) {
+            $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded to Wallet.', 'zerohold' ) );
+        }
+        $order->save();
+
+        wp_send_json_success( 'Order rejected and wallet refunded' );
+    }
+
     wp_send_json_error( 'Unsupported payment method (' . $payment_method . ')' );
 }
 
