@@ -304,7 +304,7 @@ function zh_vendor_reject_order_ajax() {
     }
 
     // CASE 3: NEW WALLET SYSTEM (wps_wcb_wallet_payment_gateway)
-    if ( $payment_method === 'wps_wcb_wallet_payment_gateway' ) {
+    if ( $payment_method === 'wps_wcb_wallet_payment_gateway' || $payment_method === 'wal_wallet' ) {
         // Step 1: Create WooCommerce Refund Record (Internal bookkeeping)
         // We set 'refund_payment' => false because the gateway doesn't support automatic refunds via pure API.
         $refund = wc_create_refund( array(
@@ -318,19 +318,30 @@ function zh_vendor_reject_order_ajax() {
             wp_send_json_error( 'Refund record failed: ' . $refund->get_error_message() );
         }
 
-        // Step 2: Manually Credit the Wallet using Plugin Filter
-        $customer_id = $order->get_user_id();
-        $amount      = (float) $order->get_total();
-        $details     = sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id );
-
-        // This filter is the standard API point for "Wallet System for WooCommerce"
-        $transaction_id = apply_filters( 'wps_wcb_credit_amount', $customer_id, $amount, $details );
-
-        if ( ! $transaction_id ) {
-            // Fallback warning if plugin hook doesn't fire
-            $order->add_order_note( '⚠️ Vendor rejected order but Wallet Credit failed. Please credit user manually.' );
+        // Step 2: Manually Credit the Wallet using Plugin API
+        if ( function_exists( 'wal_credit_wallet_fund' ) ) {
+            $currency = $order->get_currency();
+            $amount   = (float) $order->get_total();
+            
+            $args = array(
+                'user_id'            => $order->get_user_id(),
+                'order_id'           => $order_id,
+                'amount'             => $amount,
+                'event_id'           => 20, // 20 - Wallet Refund Credit
+                'event_message'      => sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id ),
+                'currency'           => $currency,
+                'update_usage_total' => true, // Decreases usage total (since it's a refund)
+            );
+        
+            $transaction_id = wal_credit_wallet_fund( $args );
+        
+            if ( $transaction_id ) {
+                $order->add_order_note( 'Wallet credited successfully via API. Transaction ID: ' . $transaction_id );
+            } else {
+                $order->add_order_note( '⚠️ Vendor rejected order but Wallet Credit failed (API returned false). Please credit user manually.' );
+            }
         } else {
-            $order->add_order_note( 'Wallet credited successfully via API. Transaction ID: ' . $transaction_id );
+            $order->add_order_note( '⚠️ Wallet API function (wal_credit_wallet_fund) not found. Credit failed.' );
         }
 
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
