@@ -249,8 +249,15 @@ function zh_vendor_reject_order_ajax() {
             sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id )
         );
 
+        // Calculate and store rejection penalty (25% of order total)
+        $penalty_amount = $amount * 0.25;
+        $total_deduction = $amount + $penalty_amount; // 125%
+        
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
+        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
+        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
         $order->set_status( 'refunded', __( 'Vendor rejected order. Amount refunded to customer wallet.', 'zerohold' ) );
         $order->save();
 
@@ -295,8 +302,16 @@ function zh_vendor_reject_order_ajax() {
             wp_send_json_error( 'Razorpay refund failed: ' . $err_msg );
         }
 
+        // Calculate and store rejection penalty (25% of order total)
+        $amount = (float) $order->get_total();
+        $penalty_amount = $amount * 0.25;
+        $total_deduction = $amount + $penalty_amount; // 125%
+        
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
+        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
+        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
         $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded via Razorpay.', 'zerohold' ) );
         $order->save();
 
@@ -344,8 +359,16 @@ function zh_vendor_reject_order_ajax() {
             $order->add_order_note( '⚠️ Wallet API function (wal_credit_wallet_fund) not found. Credit failed.' );
         }
 
+        // Calculate and store rejection penalty (25% of order total)
+        $amount = (float) $order->get_total();
+        $penalty_amount = $amount * 0.25;
+        $total_deduction = $amount + $penalty_amount; // 125%
+        
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
+        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
+        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
         
         if ( $order->get_status() !== 'refunded' ) {
             $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded to Wallet.', 'zerohold' ) );
