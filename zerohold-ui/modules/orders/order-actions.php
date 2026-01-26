@@ -378,7 +378,29 @@ function zh_vendor_reject_order_ajax() {
         wp_send_json_success( 'Order rejected and wallet refunded' );
     }
 
-    wp_send_json_error( 'Unsupported payment method (' . $payment_method . ')' );
+    // CASE 4: GENERIC / FALLBACK (For COD, Bank Transfer, or other gateways)
+    // If we reached here, it means no specific handler matched, but we should still enforce penalty and mark refunded.
+    
+    // Calculate and store rejection penalty (25% of order total)
+    $amount = (float) $order->get_total();
+    $penalty_amount = $amount * 0.25;
+    $total_deduction = $amount + $penalty_amount; // 125%
+    
+    $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+    $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+    $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
+    $order->update_meta_data( '_zh_rejection_total', $total_deduction );
+    $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
+    
+    $note = sprintf( __( 'Vendor rejected order (Payment Method: %s). manual refund may be required.', 'zerohold' ), $payment_method );
+    if ( $order->get_status() !== 'refunded' ) {
+        $order->set_status( 'refunded', $note );
+    } else {
+        $order->add_order_note( $note );
+    }
+    $order->save();
+
+    wp_send_json_success( 'Order rejected (Generic Handler)' );
 }
 
 /**
