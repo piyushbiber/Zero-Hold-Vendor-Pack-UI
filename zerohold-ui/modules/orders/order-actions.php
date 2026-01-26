@@ -255,9 +255,12 @@ function zh_vendor_reject_order_ajax() {
         
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
-        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
-        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
+        
+        // Use direct update_post_meta for external query stability
+        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
+
         $order->set_status( 'refunded', __( 'Vendor rejected order. Amount refunded to customer wallet.', 'zerohold' ) );
         $order->save();
 
@@ -309,9 +312,12 @@ function zh_vendor_reject_order_ajax() {
         
         $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
         $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
-        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
-        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
+        
+        // Use direct update_post_meta for external query stability
+        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
+
         $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded via Razorpay.', 'zerohold' ) );
         $order->save();
 
@@ -388,9 +394,11 @@ function zh_vendor_reject_order_ajax() {
     
     $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
     $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-    $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
-    $order->update_meta_data( '_zh_rejection_total', $total_deduction );
-    $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
+    
+    // Use direct update_post_meta for external query stability
+    update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+    update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+    update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
     
     $note = sprintf( __( 'Vendor rejected order (Payment Method: %s). manual refund may be required.', 'zerohold' ), $payment_method );
     if ( $order->get_status() !== 'refunded' ) {
