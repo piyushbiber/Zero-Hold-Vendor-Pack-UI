@@ -383,39 +383,31 @@ function zh_vendor_reject_order_ajax() {
 }
 
 /**
- * 6️⃣ LIST ACTION COLUMNS (Separate VIEW and Process Order)
+ * 6️⃣ LIST ACTION COLUMNS (Consolidated into standard actions for layout stability)
  */
 
-// A. Inject VIEW Column Header
-add_action( 'dokan_order_listing_header_before_action_column', function() {
-    echo '<th class="zh-view-col" style="width: 80px; text-align: center;">' . esc_html__( 'VIEW', 'zerohold' ) . '</th>';
-});
+// We removed A & B (Injection Hooks) to prevent Page 2 layout breaks
 
-// B. Inject VIEW Column Data (The Eye Icon)
-add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
-    $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
-    ?>
-    <td class="zh-view-col" style="text-align: center;" data-title="<?php esc_attr_e( 'View', 'zerohold' ); ?>">
-        <a class="dokan-btn dokan-btn-default dokan-btn-sm tips" 
-           href="<?php echo esc_url( $view_url ); ?>" 
-           data-toggle="tooltip" 
-           data-placement="top" 
-           title="<?php esc_attr_e( 'View', 'dokan-lite' ); ?>">
-           <i class="far fa-eye"></i>
-        </a>
-    </td>
-    <?php
-});
-
-// C. Update ACTION Column (Add Accept/Reject, Remove View)
+// C. Update ACTION Column (Add View, Accept/Reject)
 add_filter( 'woocommerce_admin_order_actions', 'zh_add_list_action_buttons', 9999, 2 );
 function zh_add_list_action_buttons( $actions, $order ) {
     if ( ! function_exists( 'dokan_is_seller_dashboard' ) || ! dokan_is_seller_dashboard() ) {
         return $actions;
     }
 
+    $order_id = $order->get_id();
+
     // 🛑 CRITICAL: Clear all native Dokan actions to prevent "Ghost UI"
     $actions = [];
+
+    // 👁️ INJECT VIEW BUTTON (Now inside the action column for stability)
+    $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order_id ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
+    $actions['view'] = [
+        'url'    => $view_url,
+        'name'   => __( 'View Order', 'zerohold' ),
+        'action' => 'view',
+        'icon'   => '<span class="zh-view-btn"><i class="far fa-eye"></i></span>',
+    ];
 
     // 🏷️ SHIPPING BUTTONS NOW HANDLED BY ZSS PLUGIN
     // ZSS injects Generate/Download Label buttons via dokan_order_row_actions filter
@@ -463,6 +455,18 @@ add_action( 'wp_footer', function () {
     
     // Inject Nonce and Modal Container globally for dashboard
     ?>
+    <style>
+        .zh-view-btn i {
+            color: #2271b1;
+            font-size: 16px;
+        }
+        .zh-view-btn:hover i {
+            color: #135e96;
+        }
+        .zh-view-col {
+            vertical-align: middle !important;
+        }
+    </style>
     <div id="zh-global-action-assets">
         <?php wp_nonce_field( 'zh_order_action_nonce', 'zh_order_nonce' ); ?>
         
@@ -558,7 +562,7 @@ add_action( 'wp_footer', function () {
                 } else {
                     alert(res.data || 'Error accepting order');
                     $msg.remove();
-                    $rowButtons.show();
+                    $container.children().show();
                 }
             });
         });
