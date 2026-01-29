@@ -389,8 +389,26 @@ function zh_vendor_reject_order_ajax() {
 // B. Inject Column Data (IMAGE + VIEW) as hidden markers for JS to move
 add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
     $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
+    
+    // IMAGE RESOLUTION (Consolidated from order-list-ui.php)
+    $items = $order->get_items();
+    $first_item = reset( $items );
+    $product_img = '';
+    if ( $first_item ) {
+        $product = $first_item->get_product();
+        if ( $product && $product->is_type('variation') ) {
+            $parent = wc_get_product( $product->get_parent_id() );
+            if ( $parent ) $product = $parent;
+        }
+        $product_img = $product ? $product->get_image( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] ) : wc_placeholder_img( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] );
+    } else {
+        $product_img = wc_placeholder_img( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] );
+    }
+
     ?>
     <td class="zh-row-data-markers" style="display:none !important;">
+        <!-- IMAGE Marker -->
+        <div class="zh-img-marker-html"><?php echo $product_img; ?></div>
         <!-- VIEW Marker -->
         <div class="zh-view-marker-html">
             <a class="zh-view-btn" href="<?php echo esc_url( $view_url ); ?>">
@@ -519,10 +537,11 @@ add_action( 'wp_footer', function () {
 
         /* 🛡️ GHOST-BUSTER: Hide Dokan's native buttons inside the ACTION column */
         /* Native Dokan buttons use .dokan-btn and .tip classes */
-        .dokan-order-action a.dokan-btn:not(.zh-view-btn):not(:has(.zh-action-btn)):not(:has([class*="zh-"])) {
+        /* We ONLY allow buttons containing .zh- or .zss- classes to show */
+        .dokan-order-action a.dokan-btn:not(:has([class*="zh-"])):not(:has([class*="zss-"])) {
             display: none !important;
         }
-        /* Specific fallback to hide Dokan's eye icon and tip buttons */
+        /* Specific fallback for native view/tip residue */
         .dokan-order-action a.view, 
         .dokan-order-action a.tip {
             display: none !important;
@@ -602,19 +621,22 @@ add_action( 'wp_footer', function () {
                     const $marker = $row.find('.zh-view-marker-html');
                     const $actionCell = $row.find('.dokan-order-action, .zh-action-wrap');
                     if ($actionCell.length) {
+                        // HARDENING: Skip if we are in the middle of an optimistic update
+                        if ($actionCell.find('.zh-accepted-msg').length) return;
+
                         const $viewCell = $('<td class="zh-view-cell" style="vertical-align:middle;"></td>');
                         if ($marker.length) $viewCell.append($marker.html());
                         $viewCell.insertBefore($actionCell);
                     }
                 }
 
-                // B. Insert IMAGE Cell if missing (Markers from order-list-ui.php)
+                // B. Insert IMAGE Cell if missing
                 if (!$row.find('.zh-order-img-col').length) {
-                    const $imgMarker = $row.find('.zh-order-image-hidden');
+                    const $marker = $row.find('.zh-img-marker-html');
                     const $cbCell = $row.find('th.check-column, td.dokan-order-select').eq(0);
                     if ($cbCell.length) {
-                        const imgHtml = $imgMarker.length ? $imgMarker.html() : '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
-                        const $imgCell = $(`<td class="zh-order-img-col" style="width:55px; text-align:center; vertical-align:middle;">${imgHtml}</td>`);
+                        const imgHtml = $marker.length ? $marker.html() : '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
+                        const $imgCell = $(`<td class="zh-order-img-col" style="width:65px; text-align:center; vertical-align:middle;">${imgHtml}</td>`);
                         $imgCell.insertAfter($cbCell);
                     }
                 }
