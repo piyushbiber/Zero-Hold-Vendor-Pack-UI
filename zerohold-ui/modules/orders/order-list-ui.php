@@ -64,27 +64,12 @@ function zh_inject_order_product_image_data( $order ) {
 }
 
 /**
- * Enqueue CSS/JS to handle table transformation
+ * Enqueue CSS to handle table styling (Alignment logic moved to order-actions.php)
  */
-add_action( 'wp_footer', 'zh_order_list_ui_script' );
-function zh_order_list_ui_script() {
+add_action( 'wp_footer', function() {
     if ( ! function_exists( 'dokan_is_seller_dashboard' ) || ! dokan_is_seller_dashboard() ) {
         return;
     }
-
-    // Only target the order listing page (exclude single order details)
-    // Checking for 'orders' query var or param
-    $is_orders_page = isset( $_GET['orders'] ) || get_query_var( 'orders' );
-    
-    // Fallback: Check URL if query vars are not yet populated in a clean way
-    if ( ! $is_orders_page && strpos( $_SERVER['REQUEST_URI'], '/orders' ) !== false ) {
-        $is_orders_page = true;
-    }
-
-    if ( ! $is_orders_page || isset( $_GET['order_id'] ) ) {
-        return;
-    }
-
     ?>
     <style>
         .zh-order-img-col {
@@ -103,87 +88,6 @@ function zh_order_list_ui_script() {
                 display: none;
             }
         }
-
-        /* REPLACED BY CONSOLIDATED SHIELD IN ORDER-ACTIONS.PHP */
     </style>
-    <script>
-    jQuery(function($) {
-        function alignOrderImages() {
-            const $table = $('.dokan-table.dokan-table-striped');
-            if (!$table.length) return;
-
-            // STRATEGIC GUARD: Only run if hidden image markers are present
-            if (!$('.zh-order-image-hidden').length) {
-                return;
-            }
-
-            // 1. Ensure Table Header has "IMAGE" column
-            if (!$table.find('thead .zh-order-img-col').length) {
-                const $headerRow = $table.find('thead tr');
-                const $imgHeader = $('<th class="zh-order-img-col">IMAGE</th>');
-                
-                // Find Checkbox column to insert AFTER
-                const $cbHeader = $headerRow.find('th#cb, th.check-column').eq(0);
-                if ($cbHeader.length) {
-                    $imgHeader.insertAfter($cbHeader);
-                } else {
-                    // Fallback to inserting BEFORE "Order"
-                    const $orderHeader = $headerRow.find('th').filter(function() {
-                        return $(this).text().trim().toLowerCase() === 'order';
-                    });
-                    if ($orderHeader.length) {
-                        $imgHeader.insertBefore($orderHeader);
-                    }
-                }
-
-                // SECURITY GUARD: Ensure Dual Headers (VIEW + ACTION) are visible
-                let $actionHeader = $headerRow.find('th').filter(function() {
-                    let t = $(this).text().trim().toLowerCase();
-                    return t === 'action' || t === 'process order';
-                });
-                $actionHeader.css({ 'display': 'table-cell', 'visibility': 'visible' });
-
-                let $viewHeader = $headerRow.find('th.zh-view-col');
-                $viewHeader.css({ 'display': 'table-cell', 'visibility': 'visible' });
-            }
-
-            // 2. Process each row
-            $table.find('tbody tr').each(function() {
-                const $row = $(this);
-                if ($row.find('.zh-order-img-col').length) return;
-
-                // Find Checkbox cell to insert AFTER
-                const $cbCell = $row.find('th.check-column, td.dokan-order-select').eq(0);
-                const $orderCell = $row.find('.dokan-order-id');
-
-                const $hiddenData = $row.find('.zh-order-image-hidden');
-                let imgHtml = '';
-                
-                if ($hiddenData.length) {
-                    imgHtml = $hiddenData.html();
-                } else {
-                    imgHtml = '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
-                }
-
-                // Create Image Cell
-                const $imgCell = $(`<td class="zh-order-img-col" style="width:55px; text-align:center;">${imgHtml}</td>`);
-                
-                if ($cbCell.length) {
-                    $imgCell.insertAfter($cbCell);
-                } else if ($orderCell.length) {
-                    $imgCell.insertBefore($orderCell);
-                }
-            });
-        }
-
-        // Run on load
-        alignOrderImages();
-        
-        // Run after AJAX shifts
-        $(document).ajaxComplete(function() {
-            setTimeout(alignOrderImages, 100);
-        });
-    });
-    </script>
     <?php
-}
+});
