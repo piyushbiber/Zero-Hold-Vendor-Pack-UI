@@ -410,20 +410,14 @@ function zh_add_list_action_buttons( $actions, $order ) {
         return $actions;
     }
 
-    $order_id = $order->get_id();
-
-    // 🛑 CRITICAL: Clear all native Dokan actions to prevent "Ghost UI"
-    $actions = [];
-
-    // VIEW button is now in its own column (A & B above), so we don't add it here.
-
-    // 🏷️ SHIPPING BUTTONS NOW HANDLED BY ZSS PLUGIN
-    // ZSS injects Generate/Download Label buttons via dokan_order_row_actions filter
-
-    // 📦 GUARDS FOR ACCEPT/REJECT (Status: On-Hold)
     $status = $order->get_status();
     $accepted = $order->get_meta('_zh_vendor_accepted');
     $rejected = $order->get_meta('_zh_vendor_rejected');
+
+    // 🛑 CRITICAL: Remove native VIEW to prevent "Ghost UI"
+    if ( isset( $actions['view'] ) ) {
+        unset( $actions['view'] );
+    }
 
     // Display "Order rejected" if status is refunded or rejected meta is yes
     if ( $status === 'refunded' || $rejected === 'yes' ) {
@@ -452,15 +446,13 @@ function zh_add_list_action_buttons( $actions, $order ) {
         ];
     }
 
-    // 🛡️ TOTAL STEALTH COLUMN GUARD
-    // We inject a 0-pixel spacer instead of an anchor to ensure the <td> renders
-    // but there is absolutely ZERO visual "ghost" residue.
+    // 🛡️ DUAL SHIELD: If no ZSS actions, add a stealth placeholder to keep the column alive
     if ( empty( $actions ) ) {
-        $actions['zh_stealth_guard'] = [
+        $actions['zh_placeholder'] = [
             'url'    => '#',
             'name'   => '',
-            'action' => 'zh-stealth-guard',
-            'icon'   => '<div class="zh-stealth-spacer" style="width:0; height:0; display:block; visibility:hidden;"></div>',
+            'action' => 'zh-placeholder',
+            'icon'   => '<div style="width:0; height:0; display:block;"></div>',
         ];
     }
 
@@ -472,8 +464,6 @@ function zh_add_list_action_buttons( $actions, $order ) {
  */
 add_action( 'wp_footer', function () {
     if ( ! function_exists('dokan_is_seller_dashboard') || ! dokan_is_seller_dashboard() ) return;
-    
-    // Inject Nonce and Modal Container globally for dashboard
     ?>
     <style>
         /* 🧱 THE DUAL SHIELD: Force Consistent Two-Column Layout */
@@ -493,7 +483,7 @@ add_action( 'wp_footer', function () {
             align-items: center !important;
             justify-content: flex-start !important;
             gap: 12px !important;
-            min-width: 250px !important; /* Forces ACTION column to stay wide enough */
+            min-width: 250px !important; 
             vertical-align: middle !important;
             border: 0 !important;
         }
@@ -516,7 +506,6 @@ add_action( 'wp_footer', function () {
             cursor: pointer !important;
         }
 
-        /* Specific Button Shields */
         .zh-view-btn { 
             background: #f1f2f6 !important; 
             color: #2c3e50 !important; 
@@ -525,29 +514,20 @@ add_action( 'wp_footer', function () {
         .zh-view-btn i { font-size: 13px !important; margin-right: 5px !important; }
         
         .zh-accept { background: #10b981 !important; color: white !important; border: 0 !important; }
-        .zh-accept:hover { background: #059669 !important; }
-        
-        .zh-reject { background: #ef4444 !important; color: white !important; border: 0 !important; border-left: 1px solid rgba(255,255,255,0.2) !important; }
-        .zh-reject:hover { background: #dc2626 !important; }
+        .zh-reject { background: #ef4444 !important; color: white !important; border: 0 !important; }
 
         .zh-rejected-msg { color: #dc2626 !important; font-weight: bold !important; font-size: 12px; }
         .zh-accepted-msg { color: #059669 !important; font-weight: bold !important; font-size: 12px; }
 
-        /* 🛡️ STEALTH SHIELD: Kill all ghost buttons and native residue */
-        .dokan-order-action a.zh-stealth-guard,
-        .dokan-order-action a.zh-guard,
-        .dokan-order-action a.view, /* Hide Dokan default view if it resurfaces */
-        .dokan-order-action a.dokan-btn:not(:has(.zh-action-btn)):not(:has(.zh-accepted-msg)):not(:has(.zh-rejected-msg)) {
+        /* 🛡️ GHOST-BUSTER: Hide Dokan's native buttons inside the ACTION column */
+        /* Native Dokan buttons use .dokan-btn and .tip classes */
+        .dokan-order-action a.dokan-btn:not(.zh-view-btn):not(:has(.zh-action-btn)):not(:has([class*="zh-"])) {
             display: none !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 0 !important;
-            box-shadow: none !important;
-            pointer-events: none !important;
-            background: transparent !important;
+        }
+        /* Specific fallback to hide Dokan's eye icon and tip buttons */
+        .dokan-order-action a.view, 
+        .dokan-order-action a.tip {
+            display: none !important;
         }
 
         /* Ensure structural cell stays but hides contents */
