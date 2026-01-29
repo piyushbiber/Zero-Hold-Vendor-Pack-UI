@@ -136,13 +136,15 @@ function zh_order_list_ui_script() {
                     }
                 }
 
-                // SECURITY GUARD: Ensure Action Header is visible even if Dokan tries to hide it
-                // This prevents Page 2 column count mismatch
+                // SECURITY GUARD: Ensure Dual Headers (VIEW + ACTION) are visible
                 let $actionHeader = $headerRow.find('th').filter(function() {
                     let t = $(this).text().trim().toLowerCase();
                     return t === 'action' || t === 'process order';
                 });
                 $actionHeader.css({ 'display': 'table-cell', 'visibility': 'visible' });
+
+                let $viewHeader = $headerRow.find('th.zh-view-col');
+                $viewHeader.css({ 'display': 'table-cell', 'visibility': 'visible' });
             }
 
             // 2. Process each row

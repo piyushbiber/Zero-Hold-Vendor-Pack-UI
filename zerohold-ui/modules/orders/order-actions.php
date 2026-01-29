@@ -383,12 +383,27 @@ function zh_vendor_reject_order_ajax() {
 }
 
 /**
- * 6️⃣ LIST ACTION COLUMNS (Consolidated into standard actions for layout stability)
+ * 6️⃣ LIST ACTION COLUMNS (Restored Dual-Column with Structural Shield)
  */
 
-// We removed A & B (Injection Hooks) to prevent Page 2 layout breaks
+// A. Inject VIEW Column Header
+add_action( 'dokan_order_listing_header_before_action_column', function() {
+    echo '<th class="zh-view-col" style="width: 100px; text-align: left; padding-left: 15px;">' . esc_html__( 'VIEW', 'zerohold' ) . '</th>';
+});
 
-// C. Update ACTION Column (Add View, Accept/Reject)
+// B. Inject VIEW Column Data (Eye Icon + Button)
+add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
+    $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
+    ?>
+    <td class="zh-view-col" style="text-align: left; vertical-align: middle;" data-title="<?php esc_attr_e( 'View', 'zerohold' ); ?>">
+        <a class="zh-view-btn" href="<?php echo esc_url( $view_url ); ?>">
+           <i class="far fa-eye" style="margin-right: 6px;"></i> VIEW
+        </a>
+    </td>
+    <?php
+});
+
+// C. Update ACTION Column (Process Order Logic)
 add_filter( 'woocommerce_admin_order_actions', 'zh_add_list_action_buttons', 9999, 2 );
 function zh_add_list_action_buttons( $actions, $order ) {
     if ( ! function_exists( 'dokan_is_seller_dashboard' ) || ! dokan_is_seller_dashboard() ) {
@@ -400,14 +415,7 @@ function zh_add_list_action_buttons( $actions, $order ) {
     // 🛑 CRITICAL: Clear all native Dokan actions to prevent "Ghost UI"
     $actions = [];
 
-    // 👁️ INJECT VIEW BUTTON (Now inside the action column for stability)
-    $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order_id ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
-    $actions['view'] = [
-        'url'    => $view_url,
-        'name'   => __( 'View Order', 'zerohold' ),
-        'action' => 'view',
-        'icon'   => '<span class="zh-view-btn"><i class="far fa-eye"></i> VIEW</span>',
-    ];
+    // VIEW button is now in its own column (A & B above), so we don't add it here.
 
     // 🏷️ SHIPPING BUTTONS NOW HANDLED BY ZSS PLUGIN
     // ZSS injects Generate/Download Label buttons via dokan_order_row_actions filter
@@ -444,6 +452,17 @@ function zh_add_list_action_buttons( $actions, $order ) {
         ];
     }
 
+    // 🛡️ COLUMN GUARD: If no actions, add an invisible placeholder
+    // This forces Dokan to render the <td>, preventing Page 2 layout "crippling"
+    if ( empty( $actions ) ) {
+        $actions['zh_guard'] = [
+            'url'    => '#',
+            'name'   => '',
+            'action' => 'zh-guard',
+            'icon'   => '<span style="display:none;"></span>',
+        ];
+    }
+
     return $actions;
 }
 
@@ -456,8 +475,15 @@ add_action( 'wp_footer', function () {
     // Inject Nonce and Modal Container globally for dashboard
     ?>
     <style>
-        /* 🧱 THE GREAT WALL: DASHBOARD UI SHIELD */
-        .dokan-orders-table td.dokan-order-action,
+        /* 🧱 THE DUAL SHIELD: Force Consistent Two-Column Layout */
+        .zh-view-col {
+            width: 110px !important;
+            min-width: 110px !important;
+            display: table-cell !important;
+            visibility: visible !important;
+            vertical-align: middle !important;
+        }
+
         .dokan-order-action, 
         .zh-action-wrap {
             display: flex !important;
@@ -465,17 +491,15 @@ add_action( 'wp_footer', function () {
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: flex-start !important;
-            gap: 10px !important;
-            min-width: 280px !important;
+            gap: 12px !important;
+            min-width: 250px !important; /* Forces ACTION column to stay wide enough */
             vertical-align: middle !important;
             border: 0 !important;
-            box-shadow: none !important;
         }
 
         /* Consistent Button Styling */
-        .dokan-order-action a,
-        .zh-action-btn,
-        .zh-view-btn {
+        .zh-view-btn,
+        .zh-action-btn {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
