@@ -452,14 +452,15 @@ function zh_add_list_action_buttons( $actions, $order ) {
         ];
     }
 
-    // 🛡️ COLUMN GUARD: If no actions, add an invisible placeholder
-    // This forces Dokan to render the <td>, preventing Page 2 layout "crippling"
+    // 🛡️ TOTAL STEALTH COLUMN GUARD
+    // We inject a 0-pixel spacer instead of an anchor to ensure the <td> renders
+    // but there is absolutely ZERO visual "ghost" residue.
     if ( empty( $actions ) ) {
-        $actions['zh_guard'] = [
+        $actions['zh_stealth_guard'] = [
             'url'    => '#',
             'name'   => '',
-            'action' => 'zh-guard',
-            'icon'   => '<span class="zh-structural-guard" style="display:none !important;"></span>',
+            'action' => 'zh-stealth-guard',
+            'icon'   => '<div class="zh-stealth-spacer" style="width:0; height:0; display:block; visibility:hidden;"></div>',
         ];
     }
 
@@ -532,19 +533,28 @@ add_action( 'wp_footer', function () {
         .zh-rejected-msg { color: #dc2626 !important; font-weight: bold !important; font-size: 12px; }
         .zh-accepted-msg { color: #059669 !important; font-weight: bold !important; font-size: 12px; }
 
-        /* Hide Dokan's default icons to prevent ghosting */
-        .dokan-order-action a i:not(.fa-eye) { display: none !important; }
-
-        /* 🛡️ STEALTH GUARD: Hide the structural anchor but keep the TD structure */
-        .dokan-order-action a.zh-guard {
+        /* 🛡️ STEALTH SHIELD: Kill all ghost buttons and native residue */
+        .dokan-order-action a.zh-stealth-guard,
+        .dokan-order-action a.zh-guard,
+        .dokan-order-action a.view, /* Hide Dokan default view if it resurfaces */
+        .dokan-order-action a.dokan-btn:not(:has(.zh-action-btn)):not(:has(.zh-accepted-msg)):not(:has(.zh-rejected-msg)) {
             display: none !important;
             visibility: hidden !important;
-            pointer-events: none !important;
-            opacity: 0 !important;
             width: 0 !important;
             height: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            pointer-events: none !important;
+            background: transparent !important;
+        }
+
+        /* Ensure structural cell stays but hides contents */
+        .zh-stealth-spacer {
+            width: 0;
+            height: 0;
+            overflow: hidden;
         }
     </style>
     <div id="zh-global-action-assets">
