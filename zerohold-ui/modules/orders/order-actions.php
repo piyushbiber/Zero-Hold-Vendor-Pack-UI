@@ -249,10 +249,21 @@ function zh_vendor_reject_order_ajax() {
             sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id )
         );
 
-        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
-        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
-            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
-        }
+        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
+        $amount = (float) $order->get_total();
+        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+        
+        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+        $total_deduction = $amount + $penalty_amount;
+        
+        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        
+        // Use direct update_post_meta for external query stability
+        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
 
         $order->set_status( 'refunded', __( 'Vendor rejected order. Amount refunded to customer wallet.', 'zerohold' ) );
         $order->save();
@@ -298,10 +309,21 @@ function zh_vendor_reject_order_ajax() {
             wp_send_json_error( 'Razorpay refund failed: ' . $err_msg );
         }
 
-        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
-        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
-            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
-        }
+        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
+        $amount = (float) $order->get_total();
+        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+        
+        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+        $total_deduction = $amount + $penalty_amount;
+        
+        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        
+        // Use direct update_post_meta for external query stability
+        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
 
         $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded via Razorpay.', 'zerohold' ) );
         $order->save();
@@ -350,10 +372,16 @@ function zh_vendor_reject_order_ajax() {
             $order->add_order_note( '⚠️ Wallet API function (wal_credit_wallet_fund) not found. Credit failed.' );
         }
 
-        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
-        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
-            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
-        }
+        // Calculate and store rejection penalty (25% of order total)
+        $amount = (float) $order->get_total();
+        $penalty_amount = $amount * 0.25;
+        $total_deduction = $amount + $penalty_amount; // 125%
+        
+        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
+        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
+        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
         
         if ( $order->get_status() !== 'refunded' ) {
             $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded to Wallet.', 'zerohold' ) );
@@ -366,10 +394,21 @@ function zh_vendor_reject_order_ajax() {
     // CASE 4: GENERIC / FALLBACK (For COD, Bank Transfer, or other gateways)
     // If we reached here, it means no specific handler matched, but we should still enforce penalty and mark refunded.
     
-    // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
-    if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
-        \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
-    }
+    // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
+    $amount = (float) $order->get_total();
+    $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
+    $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
+    
+    $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
+    $total_deduction = $amount + $penalty_amount;
+    
+    $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
+    $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
+    
+    // Use direct update_post_meta for external query stability
+    update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
+    update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
+    update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
     
     $note = sprintf( __( 'Vendor rejected order (Payment Method: %s). manual refund may be required.', 'zerohold' ), $payment_method );
     if ( $order->get_status() !== 'refunded' ) {
@@ -383,58 +422,47 @@ function zh_vendor_reject_order_ajax() {
 }
 
 /**
- * 6️⃣ LIST ACTION COLUMNS (Restored Dual-Column with Structural Shield)
+ * 6️⃣ LIST ACTION COLUMNS (Separate VIEW and Process Order)
  */
 
-// B. Inject Column Data (IMAGE + VIEW) as hidden markers inside the ACTION cell
-// This prevents extra <td> artifacts from "crippling" the table layout
+// A. Inject VIEW Column Header
+add_action( 'dokan_order_listing_header_before_action_column', function() {
+    echo '<th class="zh-view-col" style="width: 80px; text-align: center;">' . esc_html__( 'VIEW', 'zerohold' ) . '</th>';
+});
+
+// B. Inject VIEW Column Data (The Eye Icon)
 add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
     $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
-    
-    // IMAGE RESOLUTION
-    $items = $order->get_items();
-    $first_item = reset( $items );
-    $product_img = '';
-    if ( $first_item ) {
-        $product = $first_item->get_product();
-        if ( $product && $product->is_type('variation') ) {
-            $parent = wc_get_product( $product->get_parent_id() );
-            if ( $parent ) $product = $parent;
-        }
-        $product_img = $product ? $product->get_image( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] ) : wc_placeholder_img( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] );
-    } else {
-        $product_img = wc_placeholder_img( 'shop_thumbnail', [ 'class' => 'zh-order-thumb' ] );
-    }
-
     ?>
-    <div class="zh-row-data-markers" style="display:none !important;">
-        <!-- IMAGE Marker -->
-        <div class="zh-img-marker-html"><?php echo $product_img; ?></div>
-        <!-- VIEW Marker -->
-        <div class="zh-view-marker-html">
-            <a class="zh-view-btn" href="<?php echo esc_url( $view_url ); ?>">
-               <i class="far fa-eye" style="margin-right: 6px;"></i> VIEW
-            </a>
-        </div>
-    </div>
+    <td class="zh-view-col" style="text-align: center;" data-title="<?php esc_attr_e( 'View', 'zerohold' ); ?>">
+        <a class="dokan-btn dokan-btn-default dokan-btn-sm tips" 
+           href="<?php echo esc_url( $view_url ); ?>" 
+           data-toggle="tooltip" 
+           data-placement="top" 
+           title="<?php esc_attr_e( 'View', 'dokan-lite' ); ?>">
+           <i class="far fa-eye"></i>
+        </a>
+    </td>
     <?php
 });
 
-// C. Update ACTION Column (Process Order Logic)
+// C. Update ACTION Column (Add Accept/Reject, Remove View)
 add_filter( 'woocommerce_admin_order_actions', 'zh_add_list_action_buttons', 9999, 2 );
 function zh_add_list_action_buttons( $actions, $order ) {
     if ( ! function_exists( 'dokan_is_seller_dashboard' ) || ! dokan_is_seller_dashboard() ) {
         return $actions;
     }
 
+    // 🛑 CRITICAL: Clear all native Dokan actions to prevent "Ghost UI"
+    $actions = [];
+
+    // 🏷️ SHIPPING BUTTONS NOW HANDLED BY ZSS PLUGIN
+    // ZSS injects Generate/Download Label buttons via dokan_order_row_actions filter
+
+    // 📦 GUARDS FOR ACCEPT/REJECT (Status: On-Hold)
     $status = $order->get_status();
     $accepted = $order->get_meta('_zh_vendor_accepted');
     $rejected = $order->get_meta('_zh_vendor_rejected');
-
-    // 🛑 CRITICAL: Remove native VIEW to prevent "Ghost UI"
-    if ( isset( $actions['view'] ) ) {
-        unset( $actions['view'] );
-    }
 
     // Display "Order rejected" if status is refunded or rejected meta is yes
     if ( $status === 'refunded' || $rejected === 'yes' ) {
@@ -463,16 +491,6 @@ function zh_add_list_action_buttons( $actions, $order ) {
         ];
     }
 
-    // 🛡️ DUAL SHIELD: If no ZSS actions, add a stealth placeholder to keep the column alive
-    if ( empty( $actions ) ) {
-        $actions['zh_placeholder'] = [
-            'url'    => '#',
-            'name'   => '',
-            'action' => 'zh-placeholder',
-            'icon'   => '<div style="width:0; height:0; display:block;"></div>',
-        ];
-    }
-
     return $actions;
 }
 
@@ -481,80 +499,9 @@ function zh_add_list_action_buttons( $actions, $order ) {
  */
 add_action( 'wp_footer', function () {
     if ( ! function_exists('dokan_is_seller_dashboard') || ! dokan_is_seller_dashboard() ) return;
+    
+    // Inject Nonce and Modal Container globally for dashboard
     ?>
-    <style>
-        /* 🧱 THE DUAL SHIELD: Force Consistent Two-Column Layout */
-        .zh-view-col {
-            width: 110px !important;
-            min-width: 110px !important;
-            display: table-cell !important;
-            visibility: visible !important;
-            vertical-align: middle !important;
-        }
-
-        .dokan-order-action, 
-        .zh-action-wrap {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            gap: 12px !important;
-            min-width: 250px !important; 
-            vertical-align: middle !important;
-            border: 0 !important;
-        }
-
-        /* Consistent Button Styling */
-        .zh-view-btn,
-        .zh-action-btn {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 6px 14px !important;
-            height: 32px !important;
-            font-size: 11px !important;
-            font-weight: 800 !important;
-            text-transform: uppercase !important;
-            border-radius: 4px !important;
-            white-space: nowrap !important;
-            text-decoration: none !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer !important;
-        }
-
-        .zh-view-btn { 
-            background: #f1f2f6 !important; 
-            color: #2c3e50 !important; 
-            border: 1px solid #ced4da !important;
-        }
-        .zh-view-btn i { font-size: 13px !important; margin-right: 5px !important; }
-        
-        .zh-accept { background: #10b981 !important; color: white !important; border: 0 !important; }
-        .zh-reject { background: #ef4444 !important; color: white !important; border: 0 !important; }
-
-        .zh-rejected-msg { color: #dc2626 !important; font-weight: bold !important; font-size: 12px; }
-        .zh-accepted-msg { color: #059669 !important; font-weight: bold !important; font-size: 12px; }
-
-        /* 🛡️ GHOST-BUSTER: Hide Dokan's native buttons inside the ACTION column */
-        /* Native Dokan buttons use .dokan-btn and .tip classes */
-        /* We ONLY allow buttons containing .zh- or .zss- classes to show */
-        .dokan-order-action a.dokan-btn:not(:has([class*="zh-"])):not(:has([class*="zss-"])) {
-            display: none !important;
-        }
-        /* Specific fallback for native view/tip residue */
-        .dokan-order-action a.view, 
-        .dokan-order-action a.tip {
-            display: none !important;
-        }
-
-        /* Ensure structural cell stays but hides contents */
-        .zh-stealth-spacer {
-            width: 0;
-            height: 0;
-            overflow: hidden;
-        }
-    </style>
     <div id="zh-global-action-assets">
         <?php wp_nonce_field( 'zh_order_action_nonce', 'zh_order_nonce' ); ?>
         
@@ -580,73 +527,16 @@ add_action( 'wp_footer', function () {
 
     <script>
     jQuery(function($){
-        /**
-         * 🧱 UNIFIED TABLE BUILDER
-         * Programmatically rebuilds the dashboard to ensure IMAGE and VIEW columns
-         * are always present and correctly positioned, bypassing Dokan hook failures.
-         */
-        function zhBuildDashboardTable() {
-            const $table = $('.dokan-table.dokan-table-striped');
-            if (!$table.length) return;
-
-            const $headerRow = $table.find('thead tr');
-            
-            // 1. IMAGE HEADER
-            if (!$headerRow.find('.zh-order-img-col').length) {
-                const $imgHeader = $('<th class="zh-order-img-col">IMAGE</th>');
-                const $cbHeader = $headerRow.find('th#cb, th.check-column').eq(0);
-                if ($cbHeader.length) $imgHeader.insertAfter($cbHeader);
-            }
-
-            // 2. VIEW HEADER
-            if (!$headerRow.find('.zh-view-col-header').length) {
-                const $viewHeader = $('<th class="zh-view-col-header" style="width: 110px;">VIEW</th>');
-                const $actionHeader = $headerRow.find('th').filter(function() {
-                    let t = $(this).text().trim().toLowerCase();
-                    return t === 'action' || t === 'process order';
-                });
-                if ($actionHeader.length) {
-                    $viewHeader.insertBefore($actionHeader);
-                    // RENAME ACTION to "PROCESS ORDER"
-                    $actionHeader.text('PROCESS ORDER').css({'text-align':'left', 'padding-left':'15px'});
-                    $actionHeader.css({'display':'table-cell', 'visibility':'visible'});
-                }
-            }
-
-            // 3. ROW PROCESSING
-            $table.find('tbody tr').each(function() {
-                const $row = $(this);
-                const $actionCell = $row.find('.dokan-order-action, .zh-action-wrap');
-                if (!$actionCell.length) return;
-
-                // A. Insert VIEW Cell if missing
-                if (!$row.find('.zh-view-cell').length) {
-                    const $marker = $actionCell.find('.zh-view-marker-html');
-                    if ($actionCell.find('.zh-accepted-msg').length) return;
-
-                    const $viewCell = $('<td class="zh-view-cell" style="vertical-align:middle;"></td>');
-                    if ($marker.length) $viewCell.append($marker.html());
-                    $viewCell.insertBefore($actionCell);
-                }
-
-                // B. Insert IMAGE Cell if missing
-                if (!$row.find('.zh-order-img-col').length) {
-                    const $marker = $actionCell.find('.zh-img-marker-html');
-                    const $cbCell = $row.find('th.check-column, td.dokan-order-select').eq(0);
-                    if ($cbCell.length) {
-                        const imgHtml = $marker.length ? $marker.html() : '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
-                        const $imgCell = $(`<td class="zh-order-img-col" style="width:65px; text-align:center; vertical-align:middle;">${imgHtml}</td>`);
-                        $imgCell.insertAfter($cbCell);
-                    }
+        // Rename Action Column
+        function zhRenameActionHeader() {
+            $('.dokan-table-striped thead th').each(function(){
+                if ($(this).text().trim() === 'Action') {
+                    $(this).text('Process order');
                 }
             });
         }
-
-        // Run Builders
-        zhBuildDashboardTable();
-        $(document).ajaxComplete(function(){
-            setTimeout(zhBuildDashboardTable, 100);
-        });
+        zhRenameActionHeader();
+        $(document).ajaxComplete(zhRenameActionHeader);
 
         // Helper: Get Order ID from button or row
         function getOrderId($el) {
@@ -707,7 +597,7 @@ add_action( 'wp_footer', function () {
                 } else {
                     alert(res.data || 'Error accepting order');
                     $msg.remove();
-                    $container.children().show();
+                    $rowButtons.show();
                 }
             });
         });
