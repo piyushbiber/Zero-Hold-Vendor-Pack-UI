@@ -386,11 +386,12 @@ function zh_vendor_reject_order_ajax() {
  * 6️⃣ LIST ACTION COLUMNS (Restored Dual-Column with Structural Shield)
  */
 
-// B. Inject Column Data (IMAGE + VIEW) as hidden markers for JS to move
+// B. Inject Column Data (IMAGE + VIEW) as hidden markers inside the ACTION cell
+// This prevents extra <td> artifacts from "crippling" the table layout
 add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
     $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
     
-    // IMAGE RESOLUTION (Consolidated from order-list-ui.php)
+    // IMAGE RESOLUTION
     $items = $order->get_items();
     $first_item = reset( $items );
     $product_img = '';
@@ -406,7 +407,7 @@ add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
     }
 
     ?>
-    <td class="zh-row-data-markers" style="display:none !important;">
+    <div class="zh-row-data-markers" style="display:none !important;">
         <!-- IMAGE Marker -->
         <div class="zh-img-marker-html"><?php echo $product_img; ?></div>
         <!-- VIEW Marker -->
@@ -415,7 +416,7 @@ add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
                <i class="far fa-eye" style="margin-right: 6px;"></i> VIEW
             </a>
         </div>
-    </td>
+    </div>
     <?php
 });
 
@@ -615,24 +616,22 @@ add_action( 'wp_footer', function () {
             // 3. ROW PROCESSING
             $table.find('tbody tr').each(function() {
                 const $row = $(this);
+                const $actionCell = $row.find('.dokan-order-action, .zh-action-wrap');
+                if (!$actionCell.length) return;
 
                 // A. Insert VIEW Cell if missing
                 if (!$row.find('.zh-view-cell').length) {
-                    const $marker = $row.find('.zh-view-marker-html');
-                    const $actionCell = $row.find('.dokan-order-action, .zh-action-wrap');
-                    if ($actionCell.length) {
-                        // HARDENING: Skip if we are in the middle of an optimistic update
-                        if ($actionCell.find('.zh-accepted-msg').length) return;
+                    const $marker = $actionCell.find('.zh-view-marker-html');
+                    if ($actionCell.find('.zh-accepted-msg').length) return;
 
-                        const $viewCell = $('<td class="zh-view-cell" style="vertical-align:middle;"></td>');
-                        if ($marker.length) $viewCell.append($marker.html());
-                        $viewCell.insertBefore($actionCell);
-                    }
+                    const $viewCell = $('<td class="zh-view-cell" style="vertical-align:middle;"></td>');
+                    if ($marker.length) $viewCell.append($marker.html());
+                    $viewCell.insertBefore($actionCell);
                 }
 
                 // B. Insert IMAGE Cell if missing
                 if (!$row.find('.zh-order-img-col').length) {
-                    const $marker = $row.find('.zh-img-marker-html');
+                    const $marker = $actionCell.find('.zh-img-marker-html');
                     const $cbCell = $row.find('th.check-column, td.dokan-order-select').eq(0);
                     if ($cbCell.length) {
                         const imgHtml = $marker.length ? $marker.html() : '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
