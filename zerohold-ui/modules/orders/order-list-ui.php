@@ -104,64 +104,7 @@ function zh_order_list_ui_script() {
             }
         }
 
-        /* SIMPLIFIED INTERACTION FLOW CSS */
-        .zh-accepted-msg {
-            color: #2ecc71;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        .zh-rejected-msg {
-            color: #f87171;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        .zh-print-label {
-            background: #6c5ce7 !important;
-            color: white !important;
-            border: 0 !important;
-            padding: 5px 12px !important;
-            border-radius: 4px !important;
-            cursor: pointer !important;
-            font-weight: 600 !important;
-            font-size: 12px !important;
-            display: inline-block !important;
-            text-decoration: none !important;
-            line-height: 1.4 !important;
-        }
-        .zh-print-label:hover {
-            background: #5b4bc4 !important;
-            color: #fff !important;
-        }
-
-        /* Action Column Buttons (Standard Styling) */
-        .dokan-order-action a span.zh-action-btn {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 12px;
-            border: 1px solid #ddd;
-            background: #f8f9fa;
-            color: #333;
-            margin: 2px;
-        }
-
-        .dokan-order-action a.accept span.zh-accept {
-            background: #f0fdf4;
-            color: #16a34a;
-            border-color: #bbf7d0;
-        }
-
-        .dokan-order-action a.reject span.zh-reject {
-            background: #fef2f2;
-            color: #dc2626;
-            border-color: #fecaca;
-        }
-
-        /* GHOST BUSTING: Suppress default Dokan icons inside action buttons if they resurface */
-        .dokan-order-action a i {
-            display: none !important;
-        }
+        /* REPLACED BY CONSOLIDATED SHIELD IN ORDER-ACTIONS.PHP */
     </style>
     <script>
     jQuery(function($) {
@@ -192,6 +135,14 @@ function zh_order_list_ui_script() {
                         $imgHeader.insertBefore($orderHeader);
                     }
                 }
+
+                // SECURITY GUARD: Ensure Action Header is visible even if Dokan tries to hide it
+                // This prevents Page 2 column count mismatch
+                let $actionHeader = $headerRow.find('th').filter(function() {
+                    let t = $(this).text().trim().toLowerCase();
+                    return t === 'action' || t === 'process order';
+                });
+                $actionHeader.css({ 'display': 'table-cell', 'visibility': 'visible' });
             }
 
             // 2. Process each row

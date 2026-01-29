@@ -456,16 +456,60 @@ add_action( 'wp_footer', function () {
     // Inject Nonce and Modal Container globally for dashboard
     ?>
     <style>
-        .zh-view-btn i {
-            color: #2271b1;
-            font-size: 16px;
-        }
-        .zh-view-btn:hover i {
-            color: #135e96;
-        }
-        .zh-view-col {
+        /* 🧱 THE GREAT WALL: DASHBOARD UI SHIELD */
+        .dokan-orders-table td.dokan-order-action,
+        .dokan-order-action, 
+        .zh-action-wrap {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 10px !important;
+            min-width: 280px !important;
             vertical-align: middle !important;
+            border: 0 !important;
+            box-shadow: none !important;
         }
+
+        /* Consistent Button Styling */
+        .dokan-order-action a,
+        .zh-action-btn,
+        .zh-view-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 6px 14px !important;
+            height: 32px !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            border-radius: 4px !important;
+            white-space: nowrap !important;
+            text-decoration: none !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+        }
+
+        /* Specific Button Shields */
+        .zh-view-btn { 
+            background: #f8f9fa !important; 
+            color: #2c3e50 !important; 
+            border: 1px solid #d1d5db !important;
+        }
+        .zh-view-btn i { font-size: 14px !important; margin: 0 !important; }
+        
+        .zh-accept { background: #10b981 !important; color: white !important; border: 0 !important; }
+        .zh-accept:hover { background: #059669 !important; }
+        
+        .zh-reject { background: #ef4444 !important; color: white !important; border: 0 !important; border-left: 1px solid rgba(255,255,255,0.2) !important; }
+        .zh-reject:hover { background: #dc2626 !important; }
+
+        .zh-rejected-msg { color: #dc2626 !important; font-weight: bold !important; font-size: 12px; }
+        .zh-accepted-msg { color: #059669 !important; font-weight: bold !important; font-size: 12px; }
+
+        /* Hide Dokan's default icons to prevent ghosting */
+        .dokan-order-action a i:not(.fa-eye) { display: none !important; }
     </style>
     <div id="zh-global-action-assets">
         <?php wp_nonce_field( 'zh_order_action_nonce', 'zh_order_nonce' ); ?>
@@ -492,16 +536,22 @@ add_action( 'wp_footer', function () {
 
     <script>
     jQuery(function($){
-        // Rename Action Column
+        // Rename Action Column to "PROCESS ORDER" (Clean realization)
         function zhRenameActionHeader() {
             $('.dokan-table-striped thead th').each(function(){
-                if ($(this).text().trim() === 'Action') {
-                    $(this).text('Process order');
+                let txt = $(this).text().trim().toUpperCase();
+                if (txt === 'ACTION' || txt === 'PROCESS ORDER') {
+                    $(this).text('PROCESS ORDER').css({
+                        'text-align': 'left',
+                        'padding-left': '15px'
+                    });
                 }
             });
         }
         zhRenameActionHeader();
-        $(document).ajaxComplete(zhRenameActionHeader);
+        $(document).ajaxComplete(function(){
+            setTimeout(zhRenameActionHeader, 50);
+        });
 
         // Helper: Get Order ID from button or row
         function getOrderId($el) {
