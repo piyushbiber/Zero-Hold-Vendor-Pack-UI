@@ -249,21 +249,10 @@ function zh_vendor_reject_order_ajax() {
             sprintf( __( 'Refund for Order #%s (Vendor rejected)', 'zerohold' ), $order_id )
         );
 
-        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
-        $amount = (float) $order->get_total();
-        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
-        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
-        
-        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
-        $total_deduction = $amount + $penalty_amount;
-        
-        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
-        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-        
-        // Use direct update_post_meta for external query stability
-        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
-        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
-        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
+        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
+        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
+            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
+        }
 
         $order->set_status( 'refunded', __( 'Vendor rejected order. Amount refunded to customer wallet.', 'zerohold' ) );
         $order->save();
@@ -309,21 +298,10 @@ function zh_vendor_reject_order_ajax() {
             wp_send_json_error( 'Razorpay refund failed: ' . $err_msg );
         }
 
-        // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
-        $amount = (float) $order->get_total();
-        $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
-        $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
-        
-        $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
-        $total_deduction = $amount + $penalty_amount;
-        
-        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
-        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-        
-        // Use direct update_post_meta for external query stability
-        update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
-        update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
-        update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
+        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
+        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
+            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
+        }
 
         $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded via Razorpay.', 'zerohold' ) );
         $order->save();
@@ -372,16 +350,10 @@ function zh_vendor_reject_order_ajax() {
             $order->add_order_note( '⚠️ Wallet API function (wal_credit_wallet_fund) not found. Credit failed.' );
         }
 
-        // Calculate and store rejection penalty (25% of order total)
-        $amount = (float) $order->get_total();
-        $penalty_amount = $amount * 0.25;
-        $total_deduction = $amount + $penalty_amount; // 125%
-        
-        $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
-        $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-        $order->update_meta_data( '_zh_rejection_penalty', $penalty_amount );
-        $order->update_meta_data( '_zh_rejection_total', $total_deduction );
-        $order->update_meta_data( '_zh_rejection_date', current_time( 'mysql' ) );
+        // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
+        if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
+            \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
+        }
         
         if ( $order->get_status() !== 'refunded' ) {
             $order->set_status( 'refunded', __( 'Vendor rejected order. Payment refunded to Wallet.', 'zerohold' ) );
@@ -394,21 +366,10 @@ function zh_vendor_reject_order_ajax() {
     // CASE 4: GENERIC / FALLBACK (For COD, Bank Transfer, or other gateways)
     // If we reached here, it means no specific handler matched, but we should still enforce penalty and mark refunded.
     
-    // Calculate Rejection Penalty (Dynamic: Fixed + Percentage)
-    $amount = (float) $order->get_total();
-    $fixed_fee = (float) get_option( 'zh_rejection_penalty_fixed', 0 );
-    $percent   = (float) get_option( 'zh_rejection_penalty_percent', 25 );
-    
-    $penalty_amount = $fixed_fee + ( $amount * ( $percent / 100 ) );
-    $total_deduction = $amount + $penalty_amount;
-    
-    $order->update_meta_data( '_zh_vendor_rejected', 'yes' );
-    $order->update_meta_data( '_zh_vendor_reject_reason', $reason );
-    
-    // Use direct update_post_meta for external query stability
-    update_post_meta( $order_id, '_zh_rejection_penalty', $penalty_amount );
-    update_post_meta( $order_id, '_zh_rejection_total', $total_deduction );
-    update_post_meta( $order_id, '_zh_rejection_date', current_time( 'mysql' ) );
+    // HARDENED: Use Great Wall to record rejection (Fixes ₹130 vs ₹88 bug)
+    if ( class_exists( '\Zerohold\Shipping\Core\OrderStateManager' ) ) {
+        \Zerohold\Shipping\Core\OrderStateManager::record_rejection( $order_id, $reason );
+    }
     
     $note = sprintf( __( 'Vendor rejected order (Payment Method: %s). manual refund may be required.', 'zerohold' ), $payment_method );
     if ( $order->get_status() !== 'refunded' ) {
