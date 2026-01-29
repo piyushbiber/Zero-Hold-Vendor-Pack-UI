@@ -386,19 +386,17 @@ function zh_vendor_reject_order_ajax() {
  * 6️⃣ LIST ACTION COLUMNS (Restored Dual-Column with Structural Shield)
  */
 
-// A. Inject VIEW Column Header
-add_action( 'dokan_order_listing_header_before_action_column', function() {
-    echo '<th class="zh-view-col" style="width: 100px; text-align: left; padding-left: 15px;">' . esc_html__( 'VIEW', 'zerohold' ) . '</th>';
-});
-
-// B. Inject VIEW Column Data (Eye Icon + Button)
+// B. Inject Column Data (IMAGE + VIEW) as hidden markers for JS to move
 add_action( 'dokan_order_listing_row_before_action_field', function( $order ) {
     $view_url = wp_nonce_url( add_query_arg( [ 'order_id' => $order->get_id() ], dokan_get_navigation_url( 'orders' ) ), 'dokan_view_order' );
     ?>
-    <td class="zh-view-col" style="text-align: left; vertical-align: middle;" data-title="<?php esc_attr_e( 'View', 'zerohold' ); ?>">
-        <a class="zh-view-btn" href="<?php echo esc_url( $view_url ); ?>">
-           <i class="far fa-eye" style="margin-right: 6px;"></i> VIEW
-        </a>
+    <td class="zh-row-data-markers" style="display:none !important;">
+        <!-- VIEW Marker -->
+        <div class="zh-view-marker-html">
+            <a class="zh-view-btn" href="<?php echo esc_url( $view_url ); ?>">
+               <i class="far fa-eye" style="margin-right: 6px;"></i> VIEW
+            </a>
+        </div>
     </td>
     <?php
 });
@@ -562,21 +560,71 @@ add_action( 'wp_footer', function () {
 
     <script>
     jQuery(function($){
-        // Rename Action Column to "PROCESS ORDER" (Clean realization)
-        function zhRenameActionHeader() {
-            $('.dokan-table-striped thead th').each(function(){
-                let txt = $(this).text().trim().toUpperCase();
-                if (txt === 'ACTION' || txt === 'PROCESS ORDER') {
-                    $(this).text('PROCESS ORDER').css({
-                        'text-align': 'left',
-                        'padding-left': '15px'
-                    });
+        /**
+         * 🧱 UNIFIED TABLE BUILDER
+         * Programmatically rebuilds the dashboard to ensure IMAGE and VIEW columns
+         * are always present and correctly positioned, bypassing Dokan hook failures.
+         */
+        function zhBuildDashboardTable() {
+            const $table = $('.dokan-table.dokan-table-striped');
+            if (!$table.length) return;
+
+            const $headerRow = $table.find('thead tr');
+            
+            // 1. IMAGE HEADER
+            if (!$headerRow.find('.zh-order-img-col').length) {
+                const $imgHeader = $('<th class="zh-order-img-col">IMAGE</th>');
+                const $cbHeader = $headerRow.find('th#cb, th.check-column').eq(0);
+                if ($cbHeader.length) $imgHeader.insertAfter($cbHeader);
+            }
+
+            // 2. VIEW HEADER
+            if (!$headerRow.find('.zh-view-col-header').length) {
+                const $viewHeader = $('<th class="zh-view-col-header" style="width: 110px;">VIEW</th>');
+                const $actionHeader = $headerRow.find('th').filter(function() {
+                    let t = $(this).text().trim().toLowerCase();
+                    return t === 'action' || t === 'process order';
+                });
+                if ($actionHeader.length) {
+                    $viewHeader.insertBefore($actionHeader);
+                    // RENAME ACTION to "PROCESS ORDER"
+                    $actionHeader.text('PROCESS ORDER').css({'text-align':'left', 'padding-left':'15px'});
+                    $actionHeader.css({'display':'table-cell', 'visibility':'visible'});
+                }
+            }
+
+            // 3. ROW PROCESSING
+            $table.find('tbody tr').each(function() {
+                const $row = $(this);
+
+                // A. Insert VIEW Cell if missing
+                if (!$row.find('.zh-view-cell').length) {
+                    const $marker = $row.find('.zh-view-marker-html');
+                    const $actionCell = $row.find('.dokan-order-action, .zh-action-wrap');
+                    if ($actionCell.length) {
+                        const $viewCell = $('<td class="zh-view-cell" style="vertical-align:middle;"></td>');
+                        if ($marker.length) $viewCell.append($marker.html());
+                        $viewCell.insertBefore($actionCell);
+                    }
+                }
+
+                // B. Insert IMAGE Cell if missing (Markers from order-list-ui.php)
+                if (!$row.find('.zh-order-img-col').length) {
+                    const $imgMarker = $row.find('.zh-order-image-hidden');
+                    const $cbCell = $row.find('th.check-column, td.dokan-order-select').eq(0);
+                    if ($cbCell.length) {
+                        const imgHtml = $imgMarker.length ? $imgMarker.html() : '<img src="<?php echo esc_url(wc_placeholder_img_src()); ?>" class="zh-order-thumb">';
+                        const $imgCell = $(`<td class="zh-order-img-col" style="width:55px; text-align:center; vertical-align:middle;">${imgHtml}</td>`);
+                        $imgCell.insertAfter($cbCell);
+                    }
                 }
             });
         }
-        zhRenameActionHeader();
+
+        // Run Builders
+        zhBuildDashboardTable();
         $(document).ajaxComplete(function(){
-            setTimeout(zhRenameActionHeader, 50);
+            setTimeout(zhBuildDashboardTable, 100);
         });
 
         // Helper: Get Order ID from button or row
