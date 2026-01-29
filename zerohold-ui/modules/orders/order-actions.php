@@ -406,7 +406,7 @@ function zh_add_list_action_buttons( $actions, $order ) {
         'url'    => $view_url,
         'name'   => __( 'View Order', 'zerohold' ),
         'action' => 'view',
-        'icon'   => '<span class="zh-view-btn"><i class="far fa-eye"></i></span>',
+        'icon'   => '<span class="zh-view-btn"><i class="far fa-eye"></i> VIEW</span>',
     ];
 
     // 🏷️ SHIPPING BUTTONS NOW HANDLED BY ZSS PLUGIN
@@ -493,11 +493,11 @@ add_action( 'wp_footer', function () {
 
         /* Specific Button Shields */
         .zh-view-btn { 
-            background: #f8f9fa !important; 
+            background: #f1f2f6 !important; 
             color: #2c3e50 !important; 
-            border: 1px solid #d1d5db !important;
+            border: 1px solid #ced4da !important;
         }
-        .zh-view-btn i { font-size: 14px !important; margin: 0 !important; }
+        .zh-view-btn i { font-size: 13px !important; margin-right: 5px !important; }
         
         .zh-accept { background: #10b981 !important; color: white !important; border: 0 !important; }
         .zh-accept:hover { background: #059669 !important; }
