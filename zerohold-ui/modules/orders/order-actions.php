@@ -459,7 +459,7 @@ function zh_add_list_action_buttons( $actions, $order ) {
             'url'    => '#',
             'name'   => '',
             'action' => 'zh-guard',
-            'icon'   => '<span style="display:none;"></span>',
+            'icon'   => '<span class="zh-structural-guard" style="display:none !important;"></span>',
         ];
     }
 
@@ -534,6 +534,18 @@ add_action( 'wp_footer', function () {
 
         /* Hide Dokan's default icons to prevent ghosting */
         .dokan-order-action a i:not(.fa-eye) { display: none !important; }
+
+        /* 🛡️ STEALTH GUARD: Hide the structural anchor but keep the TD structure */
+        .dokan-order-action a.zh-guard {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
     </style>
     <div id="zh-global-action-assets">
         <?php wp_nonce_field( 'zh_order_action_nonce', 'zh_order_nonce' ); ?>
